@@ -25,16 +25,19 @@ CoreML::Specification::NeuralNetworkLayer* ReduceMeanLayerBuilder::Build() {
   const auto* params = reinterpret_cast<TfLiteReducerParams*>(builtin_data_);
 
   reducemean_params->set_keepdims(params->keep_dims);
-  if (axis_.size() == 0) {
-    fprintf(stderr, "not set axis_ yet");  // Should not reach here.
-    return nullptr;
-  }
+  // I don't know the reason why CoreML delegate doesn't work well when
+  // axes=[1] is setted. So, the first element of axes must be 0.
+  reducemean_params->add_axes(0);
   for (int i = 0; i < axis_.size(); i++) {
     const int axis = axis_[i];
     reducemean_params->add_axes(axis);
   }
-  reducemean_params->set_reduceall(false);
 
+  if (axis_.size() == 1 && axis_[0] == 0) {
+    reducemean_params->set_reduceall(true);
+  } else {
+    reducemean_params->set_reduceall(false);
+  }
   return layer_.release();
 };
 
@@ -50,7 +53,7 @@ int PermuteAxisFromChannelLastToChannelFirst(int axis) {
     case 3:
       return 1;
     default:
-      return -100;
+      return -404;
   }
 }
 
@@ -61,8 +64,6 @@ TfLiteStatus ReduceMeanLayerBuilder::RegisterInputs(
     return kTfLiteError;
   }
   AddInput(inputs->data[0]);
-  TfLiteTensor* raw_input = &context->tensors[inputs->data[0]];
-  int axis_size = raw_input->dims->size;
 
   int axis_idx = inputs->data[1];  // already check by inputs->size != 2
   TfLiteTensor* raw_axis = &context->tensors[axis_idx];
@@ -71,20 +72,16 @@ TfLiteStatus ReduceMeanLayerBuilder::RegisterInputs(
 
   int size = 1;
   for (int i = 0; i < raw_axis->dims->size; i++) {
-    size += raw_axis->dims->data[i];
+    size *= raw_axis->dims->data[i];
   }
 
-  for (int i = 0; i < axis_size; i++) {
-    if (i < size) {
-      const int axis = PermuteAxisFromChannelLastToChannelFirst(axis_data[i]);
-      if (axis == -100) {
-        TF_LITE_KERNEL_LOG(context, "In valid range of axis: %d\n",
-                           axis_data[i]);
-        return kTfLiteError;
-      }
-      axis_.push_back(axis);
+  for (int i = 0; i < size; i++) {
+    const int axis = PermuteAxisFromChannelLastToChannelFirst(axis_data[i]);
+    if (axis == -404) {
+      TF_LITE_KERNEL_LOG(context, "In valid range of axis: %d\n", axis_data[i]);
+      return kTfLiteError;
     }
-    axis_.push_back(0);
+    axis_.push_back(axis);
   }
   return kTfLiteOk;
 }
