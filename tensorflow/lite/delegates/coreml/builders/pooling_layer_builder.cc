@@ -130,37 +130,37 @@ OpBuilder* CreateMaxPool2dOpBuilder(GraphBuilder* graph_builder) {
   return new PoolingLayerBuilder(graph_builder, kTfLiteBuiltinMaxPool2d);
 }
 
-OpBuilder* CreateMeanOpBuilder(GraphBuilder* graph_builder) {
-  return new PoolingLayerBuilder(graph_builder, kTfLiteBuiltinMean);
-}
+// OpBuilder* CreateMeanOpBuilder(GraphBuilder* graph_builder) {
+//   return new PoolingLayerBuilder(graph_builder, kTfLiteBuiltinMean);
+// }
 
-// Only supports averaging over H and W dimensions, as
-bool IsMeanOpSupported(const TfLiteRegistration* registration,
-                       const TfLiteNode* node, TfLiteContext* context) {
-  const TfLiteTensor* input = GetInput(context, node, 0);
-  const TfLiteTensor* axis = GetInput(context, node, 1);
-  const auto* params =
-      reinterpret_cast<TfLiteReducerParams*>(node->builtin_data);
+// // Only supports averaging over H and W dimensions, as
+// bool IsMeanOpSupported(const TfLiteRegistration* registration,
+//                        const TfLiteNode* node, TfLiteContext* context) {
+//   const TfLiteTensor* input = GetInput(context, node, 0);
+//   const TfLiteTensor* axis = GetInput(context, node, 1);
+//   const auto* params =
+//       reinterpret_cast<TfLiteReducerParams*>(node->builtin_data);
 
-  if (!params->keep_dims) {
-    TF_LITE_KERNEL_LOG(context, "keep_dims should be true for Mean op.");
-    return false;
-  }
-  if (input->dims->size != 4) {
-    TF_LITE_KERNEL_LOG(context, "Mean op is only supported for 4D input.");
-    return false;
-  }
-  const int* axis_data = GetTensorData<int>(axis);
-  std::vector<bool> axis_mask = {false, true, true, false};
-  for (int i = 0; i < axis->dims->data[0]; ++i) {
-    if (!axis_mask[(axis_data[i] + 4) % 4]) {
-      TF_LITE_KERNEL_LOG(context,
-                         "Mean op should reduce for H and W dimensions.");
-      return false;
-    }
-  }
-  return true;
-}
+//   if (!params->keep_dims) {
+//     TF_LITE_KERNEL_LOG(context, "keep_dims should be true for Mean op.");
+//     return false;
+//   }
+//   if (input->dims->size != 4) {
+//     TF_LITE_KERNEL_LOG(context, "Mean op is only supported for 4D input.");
+//     return false;
+//   }
+//   const int* axis_data = GetTensorData<int>(axis);
+//   std::vector<bool> axis_mask = {false, true, true, false};
+//   for (int i = 0; i < axis->dims->data[0]; ++i) {
+//     if (!axis_mask[(axis_data[i] + 4) % 4]) {
+//       TF_LITE_KERNEL_LOG(context,
+//                          "Mean op should reduce for H and W dimensions.");
+//       return false;
+//     }
+//   }
+//   return true;
+// }
 
 }  // namespace coreml
 }  // namespace delegates
